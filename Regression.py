@@ -1,143 +1,163 @@
-#################### Implementing Different Regression Models to Predict Page Load Time ####################
-import numpy as np
-import pandas as pd
+
+#################### Implementing Different Regression Models to Predict Page Load Time for Popular Websites ####################
 import matplotlib.pyplot as plt
 import matplotlib
 import seaborn as sns
-from sklearn import preprocessing
+import numpy as np
+import pandas as pd
 from sklearn.svm import SVR
+from sklearn.kernel_ridge import KernelRidge
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import cross_val_predict, train_test_split, cross_val_score
+from sklearn.preprocessing import PolynomialFeatures, MinMaxScaler, StandardScaler, Normalizer, RobustScaler
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.decomposition import PCA
+from sklearn.linear_model import Ridge, Lasso, RidgeCV, ElasticNet, LassoCV, LassoLarsCV, LinearRegression
+from scipy.stats import spearmanr, pearsonr
 from math import sqrt
-from sklearn.linear_model import LinearRegression, Ridge, Lasso, RidgeCV, ElasticNet, LassoCV, LassoLarsCV
 from xgboost.sklearn import XGBRegressor
 from scipy.stats import skew
 
-with open("./latest_stats/filtered_latest_all_no_outlier_stat.csv") as f:
-	filtered_all_no_outlier_stat_content = f.readlines()
 
-reg_data = open("Reg-Features.csv", "w")
-for line in filtered_all_no_outlier_stat_content:
-			
-	#if float(line.split(' ')[1]) < 100:
+#####*************** Reading the Features and Page Load Times **********************#####
 
-	######### Page Load Time
-	reg_data.write(line.split(' ')[1])
-	reg_data.write(",")
+######## Defining Column Names ########
+timing_column_names = ["PageURL", "ReqObjs", "MeanObjectsSize", "LoadTime", "MaxDelay", "MaxTimingValue", "MaxTimingfactor", "MaxBlockedTime",
+                "MaxDNSTime", "MaxConncetTime", "MaxSendTime", "MaxWaitTime", "MaxReceiveTime", "ServerMaxTime",
+                "AllMaxLess2", "AllMax23", "AllMax34", "AllMax45", "AllMax56", "AllMax67", "AllMax78", "AllMax89", "AllMax910", "MaxGap", "MaxGapServer"]
 
-	######### Page Total Size
-	if float(line.split(' ')[2]) < 80000000:
-		reg_data.write(line.split(' ')[2])
-		reg_data.write(",")
-	else:
-		reg_data.write("0")
-		reg_data.write(",")
-
-	######### Objects Requested
-	reg_data.write(line.split(' ')[3])
-	reg_data.write(",")
-
-
-	######### All Objects Returned
-	reg_data.write(str(float(line.split(' ')[4]) + float(line.split(' ')[5]) + float(line.split(' ')[6])))
-	reg_data.write(",")
-
-	######### Objects Returned Origin
-	reg_data.write(str(float(line.split(' ')[4])))
-	reg_data.write(",")
-
-	######### Objects Returned NonOrigin
-	reg_data.write(str(float(line.split(' ')[5])))
-	reg_data.write(",")
-
-	######### All Servers
-	reg_data.write(str(float(line.split(' ')[7]) + float(line.split(' ')[8]) + float(line.split(' ')[9])))
-	reg_data.write(",")
-
-	######### Origin Servers
-	reg_data.write(str(line.split(' ')[7]))
-	reg_data.write(",")
-
-	######### Non-Origin Servers
-	reg_data.write(str(line.split(' ')[8]))
-	reg_data.write(",")
-
-	######### JS Number
-	reg_data.write(line.split(' ')[10])
-	reg_data.write(",")
-
-	######### JS Size
-	reg_data.write(line.split(' ')[11])
-	reg_data.write(",")
-
-	######### HTML Number
-	reg_data.write(line.split(' ')[16])
-	reg_data.write(",")
-
-	######### CSS Number
-	reg_data.write(line.split(' ')[22])
-	reg_data.write(",")
-
-	######### Image Number
-	reg_data.write(line.split(' ')[28])
-	reg_data.write(",")
-
-	######### Image Size
-	reg_data.write(line.split(' ')[29])
-	#reg_data.write(" ")
-
-	reg_data.write("\n")
-				
-
-reg_data.close()
-
-#####*************** Reading the Features and Load Times **********************#####
-
-column_names = ["LoadTime", "PageSize", "ReqObjs", "RetObjs", "RetObjsOrig", "RetObjsNonOrig", "Servers", "OrigSer", "NonOrigSer", "JSNum", "JSSize", "HTMLNum", "CSSNum", "ImageNum", "ImageSize"]
-#feature_cols = ["PageSize", "ReqObjs", "RetObjs", "Servers", "OrigSer", "NonOrigSer", "JSNum", "JSSize", "HTMLNum", "CSSNum", "ImageNum", "ImageSize"]
-data = pd.read_csv("Reg-Features.csv", names=column_names)
-#print data.head()
-#features = data.values[:, 1:4]
-#load_time = data.values[:, 0]
-#print features.shape
+stat_column_names = ["PageURL", "LoadTime", "PageSize", "ReqObjs", "NumObjsOrigin", "NumObjsNonOrigin",
+                     "NumObjsUnknown", "NumOriginServers", "NonOrigSer", "NumUnknownServers", "JSNum",
+                     "JSSize", "num_origin_javascript_matches", "size_origin_javascript",
+                     "num_non_origin_javascript_matches", "size_non_origin_javascript", "HTMLNum",
+                     "size_html", "num_origin_html_matches", "size_origin_html", "num_non_origin_html_matches",
+                     "size_non_origin_html", "CSSNum", "size_css", "num_origin_css_matches",
+                     "size_origin_css", "num_non_origin_css_matches", "size_non_origin_css", "ImageNum",
+                     "size_image", "num_origin_image_matches", "size_origin_image", "num_non_origin_image_matches",
+                     "size_non_origin_image", "num_xml_matches", "size_xml", "num_origin_xml_matches",
+                     "size_origin_xml", "num_non_origin_xml_matches", "size_non_origin_xml", "num_plain_text_matches",
+                     "size_plain_text", "num_origin_plain_text_matches", "size_origin_plain_text",
+                     "num_non_origin_plain_text_matches", "size_non_origin_plain_text", "num_json_matches",
+                     "size_json", "num_origin_json_matches", "size_origin_json", "num_non_origin_json_matches",
+                     "size_non_origin_json", "num_flash_matches", "size_flash", "num_origin_flash_matches",
+                     "size_origin_flash", "num_non_origin_flash_matches", "size_non_origin_flash",
+                     "num_font_matches", "size_font", "num_origin_font_matches", "size_origin_font",
+                     "num_non_origin_font_matches", "size_non_origin_font", "num_audio_matches",
+                     "size_audio", "num_origin_audio_matches", "size_origin_audio",
+                     "num_non_origin_audio_matches", "size_non_origin_audio", "num_video_matches",
+                     "size_video", "num_origin_video_matches", "size_origin_video", 
+                     "num_non_origin_video_matches", "size_non_origin_video", "num_other",
+                     "size_other", "num_origin_other", "size_origin_other", "num_non_origin_other",
+                     "size_non_origin_other", "num_no_type"]
 
 
-#####*************** Exploring the Page Load Time **********************#####
+selected_columns_VPs = ['PageURL', 'PageSize', 'LoadTime', 'VP', 'ReqObjs', 'RetObjs', 'Servers', 'NonOrigSer', 'JSNum',
+                     'ImageNum', 'HTMLNum', 'CSSNum', 'JSSize', 'NumOriginServers', 'NumUnknownServers',
+                     'NumObjsOrigin', 'NumObjsNonOrigin', 'NumObjsUnknown']
+
+
+######## Reading CSV Files ########
+eugene_timing_data = pd.read_csv("../../Analysis/Data-Eugene/Last-analysis/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
+china_timing_data = pd.read_csv("../../Analysis/Data-China/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
+brazil_timing_data = pd.read_csv("../../Analysis/Data-Brazil/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
+ny_timing_data = pd.read_csv("../../Analysis/Data-NY/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
+spain_timing_data = pd.read_csv("../../Analysis/Data-Spain/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
+
+eugene_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_eugene_stat.csv", sep=' ', names=stat_column_names)
+brazil_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_brazil_stat.csv", sep=' ', names=stat_column_names)
+china_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_china_stat.csv", sep=' ', names=stat_column_names)
+spain_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_spain_stat.csv", sep=' ', names=stat_column_names)
+ny_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_ny_stat.csv", sep=' ', names=stat_column_names)
+
+######## Removing Outliers ########
+eugene_timing_data['AllMax1'] = eugene_timing_data.LoadTime / (eugene_timing_data.MaxDelay/1000)
+china_timing_data['AllMax1'] = china_timing_data.LoadTime / (china_timing_data.MaxDelay/1000)
+brazil_timing_data['AllMax1'] = brazil_timing_data.LoadTime / (brazil_timing_data.MaxDelay/1000)
+ny_timing_data['AllMax1'] = ny_timing_data.LoadTime / (ny_timing_data.MaxDelay/1000)
+spain_timing_data['AllMax1'] = spain_timing_data.LoadTime / (spain_timing_data.MaxDelay/1000)
+
+eugene_stat_data = eugene_stat_data.loc[:, selected_columns_VPs]
+china_stat_data = china_stat_data.loc[:, selected_columns_VPs]
+brazil_stat_data = brazil_stat_data.loc[:, selected_columns_VPs]
+ny_stat_data = ny_stat_data.loc[:, selected_columns_VPs]
+spain_stat_data = spain_stat_data.loc[:, selected_columns_VPs]
+
+noOutlier_eugene_timing_data = eugene_timing_data.loc[((eugene_timing_data.LoadTime > 10) & (eugene_timing_data.AllMax1 > 2)) | (eugene_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
+noOutlier_china_timing_data = china_timing_data.loc[((china_timing_data.LoadTime > 10) & (china_timing_data.AllMax1 > 2)) | (china_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
+noOutlier_brazil_timing_data = brazil_timing_data.loc[((brazil_timing_data.LoadTime > 10) & (brazil_timing_data.AllMax1 > 2)) | (brazil_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
+noOutlier_ny_timing_data = ny_timing_data.loc[((ny_timing_data.LoadTime > 10) & (ny_timing_data.AllMax1 > 2)) | (ny_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
+noOutlier_spain_timing_data = spain_timing_data.loc[((spain_timing_data.LoadTime > 10) & (spain_timing_data.AllMax1 > 2)) | (spain_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
+
+######## Merging timing values with stat values to add MaxDelay ########
+merged_eugene = eugene_stat_data.merge(noOutlier_eugene_timing_data, on=['PageURL'])
+merged_china = china_stat_data.merge(noOutlier_china_timing_data, on=['PageURL'])
+merged_brazil = brazil_stat_data.merge(noOutlier_brazil_timing_data, on=['PageURL'])
+merged_ny = ny_stat_data.merge(noOutlier_ny_timing_data, on=['PageURL'])
+merged_spain = spain_stat_data.merge(noOutlier_spain_timing_data, on=['PageURL'])
+
+######## Removing Duplicates ########
+merged_eugene = merged_eugene.drop_duplicates(subset=['PageURL', 'LoadTime'])
+merged_china = merged_china.drop_duplicates(subset=['PageURL', 'LoadTime'])
+merged_brazil = merged_brazil.drop_duplicates(subset=['PageURL', 'LoadTime'])
+merged_ny = merged_ny.drop_duplicates(subset=['PageURL', 'LoadTime'])
+merged_spain = merged_spain.drop_duplicates(subset=['PageURL', 'LoadTime'])
+
+######## Adding Vantage Point (VP) Feature ########
+merged_eugene['VP'] = "Eugene"
+merged_china['VP'] = "China"
+merged_brazil['VP'] = "Brazil"
+merged_ny['VP'] = "NY"
+merged_spain['VP'] = "Spain"
+
+######## Concatenating all the data from different VPs ########
+all_stat_data = [merged_china, merged_eugene, merged_brazil, merged_ny, merged_spain]
+all_stat_data = pd.concat(all_stat_data)
+
+######## Combining some of the columns to add new features ########
+all_stat_data['Servers'] = all_stat_data.NonOrigSer + all_stat_data.NumOriginServers + all_stat_data.NumUnknownServers
+all_stat_data['RetObjs'] = all_stat_data.NumObjsOrigin + all_stat_data.NumObjsNonOrigin + all_stat_data.NumObjsUnknown
+all_stat_data['AllMax1'] = all_stat_data.LoadTime / (all_stat_data.MaxDelay / 1000)
+
+
+######## Selecting columns needed for the regression ########
+selected_columns_data = ['LoadTime', 'PageSize', 'VP', 'ReqObjs', 'RetObjs', 'Servers', 'NonOrigSer', 'JSNum',
+                     'ImageNum', 'HTMLNum', 'CSSNum', 'JSSize', 'MaxDelay', 'AllMax1', 'NumObjsNonOrigin']
+data = all_stat_data.loc[:, selected_columns_data]
+data_copy = data
+
+
+#####*************** Looking into the Page Load Times **********************#####
 sns.distplot(data['LoadTime'])
-matplotlib.rcParams['figure.figsize'] = (12.0, 6.0)
+plt.rcParams['figure.figsize'] = (12.0, 6.0)
 load_times = pd.DataFrame({"loadTime":data["LoadTime"], "log(loadTime + 1)":np.log1p(data["LoadTime"])})
 load_times.hist()
-print "Load Time Description: ", data['LoadTime'].describe()
-print data.loc[(data.LoadTime > 100), 'LoadTime'].count()
+print "Load Time Description:\n", data['LoadTime'].describe()
+#print data.loc[(data.LoadTime > 100), 'LoadTime'].count()
 #print type(load_time)
 #print load_time.shape
 
-####### Standardizing Load Time #######
-loadTime_scaled = preprocessing.StandardScaler().fit_transform(data['LoadTime'][:,np.newaxis]);
-low_range = loadTime_scaled[loadTime_scaled[:,0].argsort()][:10]
-high_range = loadTime_scaled[loadTime_scaled[:,0].argsort()][-10:]
-print('outer range (low) of the distribution:')
-print(low_range)
-print('\nouter range (high) of the distribution:')
-print(high_range)
+######## Page Load Times distribution ########
+loadTime_scaled = StandardScaler().fit_transform(data['LoadTime'][:,np.newaxis]);
+low_range = loadTime_scaled[loadTime_scaled[:, 0].argsort()][:10]
+high_range = loadTime_scaled[loadTime_scaled[:, 0].argsort()][-10:]
+print "outer range (low) of the distribution:\n", low_range
+print "outer range (high) of the distribution:\n", high_range
 
 
-#####*************** Initial Feature Skewness *****************#####
-skewness = data.apply(lambda x: skew(x))
-print skewness
 
 #####*************** Feature Engineering **********************#####
 
 # poly = PolynomialFeatures(degree=2)
 # poly_features = poly.fit_transform(features)
-# normalized_features = preprocessing.normalize(features, norm='l1')
 
 data['PercNonOrigSer'] = data['NonOrigSer'] / data['Servers']
-data['PercNonOrigObj'] = data['RetObjsNonOrig'] / data['RetObjs']
-data['PercOrigObj'] = data['RetObjsOrig'] / data['RetObjs']
+data['PercNonOrigObj'] = data['NumObjsNonOrigin'] / data['RetObjs']
+# data['PercOrigObj'] = data['RetObjsOrig'] / data['RetObjs']
+# data['SizePerObj'] = data['PageSize'] / data['RetObjs']
 data.loc[~np.isfinite(data['PercNonOrigSer']), 'PercNonOrigSer'] = 0
 data.loc[~np.isfinite(data['PercNonOrigObj']), 'PercNonOrigObj'] = 0
-data.loc[~np.isfinite(data['PercOrigObj']), 'PercOrigObj'] = 0
+# data.loc[~np.isfinite(data['PercOrigObj']), 'PercOrigObj'] = 0
+# data.loc[~np.isfinite(data['SizePerObj']), 'SizePerObj'] = 0
 
 # data['LogPageSize'] = np.log1p(data['PageSize'] + 0.000001)
 # data['LogJSSize'] = np.log1p(data['JSSize'] + 0.000001)
@@ -155,106 +175,118 @@ data.loc[~np.isfinite(data['PercOrigObj']), 'PercOrigObj'] = 0
 # data['LogPercNonOrigObj'] = np.log1p(data['PercNonOrigObj'] + 0.000001)
 # data['LogPercOrigObj'] = np.log1p(data['PercOrigObj'] + 0.000001)
 
-# data['PageSize'] = np.log1p(data['PageSize'] + 0.000001)
-# data['JSSize'] = np.log1p(data['JSSize'] + 0.000001)
-# data['JSNum'] = np.log1p(data['JSNum'] + 0.000001)
-# data['ReqObjs'] = np.log1p(data['ReqObjs'] + 0.000001)
-# data['RetObjs'] = np.log1p(data['RetObjs'] + 0.000001)
-# data['RetObjsNonOrig'] = np.log1p(data['RetObjsNonOrig'] + 0.000001)
-# data['RetObjsOrig'] = np.log1p(data['RetObjsOrig'] + 0.000001)
-# data['Servers'] = np.log1p(data['Servers'] + 0.000001)
-# data['ImageNum'] = np.log1p(data['ImageNum'] + 0.000001)
-# data['ImageSize'] = np.log1p(data['ImageSize'] + 0.000001)
-# data['OrigSer'] = np.log1p(data['OrigSer'] + 0.000001)
-# data['NonOrigSer'] = np.log1p(data['NonOrigSer'] + 0.000001)
-# data['HTMLNum'] = np.log1p(data['HTMLNum'] + 0.000001)
-# data['CSSNum'] = np.log1p(data['CSSNum'] + 0.000001)
-
 # data["PageSize-2"] = data["PageSize"] ** 2
-# data["ReqObjs-2"] = data["ReqObjs"] ** 2
-# data["RetObjs-2"] = data["RetObjs"] ** 2
-# data["Servers-2"] = data["Servers"] ** 2
+data["ReqObjs-2"] = data["ReqObjs"] ** 2
+data["RetObjs-2"] = data["RetObjs"] ** 2
+data["Servers-2"] = data["Servers"] ** 2
 # data["OrigSer-2"] = data["OrigSer"] ** 2
-# data["NonOrigSer-2"] = data["NonOrigSer"] ** 2
-# data["JSNum-2"] = data["JSNum"] ** 2
+data["NonOrigSer-2"] = data["NonOrigSer"] ** 2
+data["JSNum-2"] = data["JSNum"] ** 2
 # data["JSSize-2"] = data["JSSize"] ** 2
-# data["ImageNum-2"] = data["ImageNum"] ** 2
+data["ImageNum-2"] = data["ImageNum"] ** 2
 # data["ImageSize-2"] = data["ImageSize"] ** 2
-# data["HTMLNum-2"] = data["HTMLNum"] ** 2
-# data["CSSNum-2"] = data["CSSNum"] ** 2
+data["HTMLNum-2"] = data["HTMLNum"] ** 2
+data["CSSNum-2"] = data["CSSNum"] ** 2
 # data['PercNonOrigSer-2'] = data['PercNonOrigSer'] ** 2
 # data['PercNonOrigObj-2'] = data['PercNonOrigObj'] ** 2
 # data['PercOrigObj-2'] = data['PercOrigObj'] ** 2
 
-#data["LoadTime"] = np.log1p(data["LoadTime"])
+# data["LoadTime"] = np.log1p(data["LoadTime"])
 
-#features = data[feature_cols]
 data_cols = data.columns
-scale_features = data_cols.drop(["LoadTime", "PercNonOrigSer", "PercOrigObj", "PercNonOrigObj", "RetObjsOrig", "OrigSer"])
-feature_cols = data_cols.drop(["LoadTime", "PercOrigObj","RetObjsOrig", "OrigSer"]) 
-								#"CSSNum", "PercNonOrigObj", "PercNonOrigSer", "PageSize"])
-features = data[feature_cols]
+data.PageSize = data.PageSize / 10**6
+
+feature_cols = data_cols.drop(["LoadTime", "PageSize", "VP", "AllMax1", "JSSize"])
 load_time = data['LoadTime']
+original_features = data[feature_cols]
+
+
+######## Original Feature Skewness ########
+skewness = original_features.apply(lambda x: skew(x))
+print "Original Features Skewness:\n", skewness
 
 
 #####*************** Feature Scaling and Handling Skewness **********************#####
+# scaler = Normalizer()
+scaler = RobustScaler()
+#scaler = StandardScaler()
+# scaler = MinMaxScaler(feature_range=(0, 1))
+# data[feature_cols] = np.log1p(data[feature_cols] + 0.000001)
+# features[:] = scaler.fit_transform(features)
+data[feature_cols] = scaler.fit_transform(data[feature_cols])
+features = data[feature_cols]
 
-#scaler = preprocessing.Normalizer()
-scaler = preprocessing.RobustScaler()
-#scaler = MinMaxScaler(feature_range=(0, 1))
-features[scale_features] = scaler.fit_transform(features[scale_features])
+######## Plotting the histogram of the features ########
 features.hist()
 plt.show()
 
-#log transform skewed numeric features:
-#numeric_feats = data.dtypes[data.dtypes != "object"].index
-#skewed_feats = data[numeric_feats].apply(lambda x: skew(x.dropna())) #compute skewness
-#skewed_feats = skewed_feats[skewed_feats > 0.75]
-#skewed_feats = skewed_feats.index
-#data[skewed_feats].apply(lambda x: np.log1p(x + 0.00001))
-#print "Skewed Features: ", data[skewed_feats]
-print features['RetObjs'].describe()
-print "New Skewness: ", features.skew()
+######## New features Skewness ########
+new_skewness = features.apply(lambda x: skew(x))
+print "New Features Skewness:\n", new_skewness
+
 
 
 #####*************** Feature Correlations **********************#####
-
 ###### Correlation Matrix ######
 corrmat = data.corr()
 
-###### Load Time correlation matrix ######
-k = 14 # number of variables for heatmap
+###### Heatmap correlation plot ######
+## number of variables for heatmap ##
+k = 12
 cols = corrmat.nlargest(k, 'LoadTime')['LoadTime'].index
 cm = np.corrcoef(data[cols].values.T)
-print "Correlations: ", corrmat.nlargest(k, 'LoadTime')['LoadTime']
+print "Correlations:\n", corrmat.nlargest(k, 'LoadTime')['LoadTime']
 sns.set(font_scale=0.8)
 hm = sns.heatmap(cm, cbar=True, annot=True, square=True, fmt='.2f', annot_kws={'size': 10}, yticklabels=cols.values, xticklabels=cols.values)
 plt.show()
 
 
 #####*************** Scatter Plots **********************#####
-fig, axes = plt.subplots(nrows=4, ncols=3)
-data.plot(ax=axes[0,0], kind='scatter',x='PageSize', y='LoadTime')
-data.plot(ax=axes[0,1], kind='scatter',x='ReqObjs', y='LoadTime')
-data.plot(ax=axes[0,2], kind='scatter',x='RetObjs', y='LoadTime')
-data.plot(ax=axes[1,2], kind='scatter',x='Servers', y='LoadTime')
-data.plot(ax=axes[1,0], kind='scatter',x='JSNum', y='LoadTime')
-data.plot(ax=axes[1,1], kind='scatter',x='ImageNum', y='LoadTime')
-data.plot(ax=axes[2,0], kind='scatter',x='JSSize', y='LoadTime')
-data.plot(ax=axes[2,1], kind='scatter',x='ImageSize', y='LoadTime')
-data.plot(ax=axes[3,0], kind='scatter',x='PercNonOrigObj', y='LoadTime')
-data.plot(ax=axes[3,1], kind='scatter',x='PercOrigObj', y='LoadTime')
-data.plot(ax=axes[3,2], kind='scatter',x='PercNonOrigSer', y='LoadTime')
+fig, axes = plt.subplots(nrows=3, ncols=3)
+data.plot(ax=axes[0,0], kind='scatter',x='ReqObjs', y='LoadTime')
+data.plot(ax=axes[0,1], kind='scatter',x='RetObjs', y='LoadTime')
+data.plot(ax=axes[0,2], kind='scatter',x='Servers', y='LoadTime')
+data.plot(ax=axes[1,0], kind='scatter',x='NonOrigSer', y='LoadTime')
+data.plot(ax=axes[1,1], kind='scatter',x='JSNum', y='LoadTime')
+data.plot(ax=axes[1,2], kind='scatter',x='ImageNum', y='LoadTime')
+data.plot(ax=axes[2,0], kind='scatter',x='HTMLNum', y='LoadTime')
+data.plot(ax=axes[2,1], kind='scatter',x='PercNonOrigObj', y='LoadTime')
+data.plot(ax=axes[2,2], kind='scatter',x='PercNonOrigSer', y='LoadTime')
+plt.show()
+
+#####*************** Principal Component Analysis **********************#####
+pca = PCA(n_components = 2)
+principalComponents = pca.fit_transform(data.loc[:, feature_cols].values)
+principalDf = pd.DataFrame(data = principalComponents, columns = ['PC-1', 'PC-2'])
+principalDf.plot(kind='scatter', x='PC-1', y='PC-2')
+plt.show()
+
+
+principalDf['LoadTime'] = data.LoadTime.values
+principalDf['LoadTime_bins'] = pd.cut(principalDf.loc[:, 'LoadTime'], [0, 10, 20, 50, 180], 
+                                   labels = ['0-10', '10-20', '20-50', '>50'])
+fig = plt.figure(figsize = (8,8))
+ax = fig.add_subplot(1,1,1)
+ax.set_xlabel('Principal Component 1', fontsize = 15)
+ax.set_ylabel('Principal Component 2', fontsize = 15)
+ax.set_title('2 component PCA', fontsize = 20)
+targets = ['0-10', '10-20', '20-50', '>50']
+colors = ['r', 'g', 'b', 'y']
+for target, color in zip(targets,colors):
+    indicesToKeep = principalDf['LoadTime_bins'] == target
+    ax.scatter(principalDf.loc[indicesToKeep, 'PC-1']
+               , principalDf.loc[indicesToKeep, 'PC-2']
+               , c = color
+               , s = 50)
+ax.legend(targets)
+ax.grid('on')
 plt.show()
 
 
 
 #####*************** Regression Models **********************#####
-
 regr = LinearRegression()
-#regr = linear_model.Lasso(alpha=0.1)
-#regr = linear_model.Ridge(alpha=0.01)
-#regr = SVR()
+# regr = SVR()
 
 ######################### Ridge Regression #########################
 def rmse_cv(model):
@@ -265,21 +297,28 @@ def r2_score_cv(model):
 	r2_score = cross_val_score(model, features, load_time, scoring="r2", cv = 10)
 	return(r2_score)
 
-model_ridge = Ridge()
 ridge_predicted = cross_val_predict(Ridge(alpha = 10), features, load_time, cv=10)
 alphas = [0.0005, 0.001, 0.05, 0.1, 0.3, 1, 3, 5, 10, 15, 30, 50, 75]
 cv_ridge = [rmse_cv(Ridge(alpha = alpha)).mean() for alpha in alphas]
 cv_ridge_r2_score = [r2_score_cv(Ridge(alpha = alpha)).mean() for alpha in alphas]
 cv_ridge = pd.Series(cv_ridge, index = alphas)
-cv_ridge.plot(title = "Validation - Just Do It")
-plt.xlabel("alpha")
-plt.ylabel("rmse")
-plt.show()
+# cv_ridge.plot(title = "Validation")
+# plt.xlabel("alpha")
+# plt.ylabel("rmse")
+# plt.show()
 
+######################### Kernel Ridge Regression #########################
+# cv_kernelRidge = [rmse_cv(KernelRidge(alpha = alpha, kernel='polynomial', degree=2, coef0=2.5)).mean() for alpha in alphas]
+# cv_kernelRidge_r2_score = [r2_score_cv(KernelRidge(alpha = alpha, kernel='polynomial', degree=2, coef0=2.5)).mean() for alpha in alphas]
+# cv_kernelRidge = pd.Series(cv_kernelRidge, index = alphas)
+# cv_kernelRidge.plot(title = "Validation")
+# plt.xlabel("alpha")
+# plt.ylabel("rmse")
+# plt.show()
 
 ######################### Lasso Regression #########################
-#model_lasso = LassoCV(alphas = [1, 0.1, 0.001, 0.0005]).fit(features, load_time)
-#model_lasso = [rmse_cv(Lasso(alpha = alpha)).mean() for alpha in alphas]
+# model_lasso = LassoCV(alphas = [1, 0.1, 0.001, 0.0005]).fit(features, load_time)
+# model_lasso = [rmse_cv(Lasso(alpha = alpha)).mean() for alpha in alphas]
 min_lasso_error = 1000000
 for alpha in alphas:
 	lasso_error = rmse_cv(Lasso(alpha = alpha)).mean()
@@ -290,9 +329,9 @@ for alpha in alphas:
 best_lasso_model = Lasso(min_alpha).fit(features, load_time)
 lasso_r2_scores = cross_val_score(best_lasso_model, features, load_time, scoring='r2', cv=10)
 coef = pd.Series(best_lasso_model.coef_, index = feature_cols)
-matplotlib.rcParams['figure.figsize'] = (8.0, 10.0)
-coef.plot(kind = "barh")
-plt.title("Coefficients in the Lasso Model")
+plt.rcParams['figure.figsize'] = (8.0, 10.0)
+# coef.plot(kind = "barh")
+# plt.title("Coefficients in the Lasso Model")
 
 
 ######################### ElasticNet Regression #########################
@@ -301,27 +340,54 @@ cv_elasticNet = [rmse_cv(ElasticNet(alpha = alpha, random_state=0)).mean() for a
 cv_elasticNet_r2_score = [r2_score_cv(ElasticNet(alpha = alpha, random_state=0)).mean() for alpha in alphas]
 cv_elasticNet = pd.Series(cv_elasticNet)
 
-######################### XGBoost Regression #########################
-xgb1 = XGBRegressor(colsample_bytree=0.2,
-                 learning_rate=0.05,
-                 max_depth=3,
-                 n_estimators=1200
-                )
 
-xgboost_cv_rmse = np.sqrt(-cross_val_score(xgb1, features, load_time, cv = 10, n_jobs=-1, scoring='neg_mean_squared_error'))
+######################### XGBoost Regression #########################
+# xgb1 = XGBRegressor(colsample_bytree=0.2,
+#                  learning_rate=0.05,
+#                  max_depth=3,
+#                  n_estimators=1200
+#                 )
+
+# xgboost_cv_rmse = np.sqrt(-cross_val_score(xgb1, features, load_time, cv = 10, n_jobs=-1, scoring='neg_mean_squared_error'))
+# xgb_test = XGBRegressor(learning_rate=0.05, n_estimators=500, max_depth=3, colsample_bytree=0.4)
+# cv_score = cross_val_score(xgb_test, train_unskew.drop(['SalePrice','Id'], axis = 1), train_unskew['SalePrice'], cv = 5, n_jobs=-1)
 
 
 ###### Splitting Data into Train and Test data ######
-X_train, X_test, y_train, y_test = train_test_split(features, load_time, test_size=0.2)
+# X_train = features[:-20]
+# X_test = features[-20:]
+# Y_train = load_time[:-20]
+# Y_test = load_time[-20:]
+
+
+######################### Log Prediction #########################
+def log_prediction(regr, features, load_time):
+       X_train, X_test, y_train, y_test = train_test_split(features, load_time, test_size=0.2)
+       y_train = np.log1p(y_train)
+       regr.fit(X_train, y_train)
+       y_pred = regr.predict(X_test)
+       y_pred_series = pd.Series(y_pred)
+       print y_pred_series.describe()
+       y_pred = np.exp(y_pred) - 1
+       y_pred_series = pd.Series(y_pred)
+       print y_pred_series.describe()
+       print "Root Mean Squared Error with log: ", sqrt(abs(mean_squared_error(y_test, y_pred)))
+       print "R2 Score with log: ", r2_score(y_test, y_pred)
+
+# log_prediction(regr, features, load_time)
+# log_prediction(regr, features, load_time)
+# log_prediction(regr, features, load_time)
 
 
 ######################### Linear Regression #########################
-
 predicted = cross_val_predict(regr, features, load_time, cv=10)
+# print len(predicted)
 
 mean_square_scores = cross_val_score(regr, features, load_time, scoring='neg_mean_squared_error', cv=10)
 rms = sqrt(abs(mean_square_scores.mean()))
 linear_reg_r2_scores = cross_val_score(regr, features, load_time, scoring='r2', cv=10)
+
+X_train, X_test, y_train, y_test = train_test_split(features, load_time, test_size=0.2)
 regr.fit(X_train, y_train)
 
 ######### Linear Regression Feature Importances #########
@@ -329,7 +395,28 @@ print "Linear Regression Features Coefficients: "
 for coefficient in list(zip(feature_cols, regr.coef_)):
 	print coefficient
 
-######### Prediction Plot #########
+
+######################### RandomForestRegressor #########################
+rf = RandomForestRegressor(n_estimators=500, oob_score=True, random_state=0)
+# rf_cv_mse = -cross_val_score(rf, features, load_time, scoring="neg_mean_squared_error", cv = 10)
+rf_cv_r2_score = cross_val_score(rf, features, load_time, scoring="r2", cv = 5)
+# rf.fit(X_train, y_train)
+
+# predicted_train = rf.predict(X_train)
+# predicted_test = rf.predict(X_test)
+# test_score = r2_score(y_test, predicted_test)
+# spearman = spearmanr(y_test, predicted_test)
+# pearson = pearsonr(y_test, predicted_test)
+# print "-----------------------------------------------------------------"
+# #print "Cross Validation RMSE: ", sqrt(rf_cv_mse.mean())
+# print "Feature Importances: ", rf.feature_importances_
+# print 'Out-of-bag R-2 score estimate: ', rf.oob_score_
+# print 'Test data R-2 score: ', test_score
+# print 'Test data Spearman correlation: ', spearman[0]
+# print 'Test data Pearson correlation: ', pearson[0]
+
+
+#####*************** Prediction Plot ***************#####
 fig, ax = plt.subplots()
 ax.scatter(load_time, ridge_predicted, edgecolors=(0, 0, 0))
 ax.plot([load_time.min(), load_time.max()], [load_time.min(), load_time.max()], 'k--', lw=4)
@@ -337,18 +424,33 @@ ax.set_xlabel('Measured')
 ax.set_ylabel('Predicted')
 plt.show()
 
+# residuals = pd.Series(abs(load_time - ridge_predicted))
+# residuals = pd.Series(sqrt(abs(mean_squared_error(load_time, ridge_predicted))))
+# data_copy['residuals'] = residuals
+# residuals.where(residuals > 25).hist()
+# plt.show()
+# high_residuals = data_copy.loc[(data_copy['residuals'] > 25), ['LoadTime', 'PageSize', 'ReqObjs', 'RetObjs', 'Servers', 'VP', 'residuals', 'AllMax1']]
+# print high_residuals.sort('residuals', ascending=False).head(50).to_string()
+# print high_residuals.describe().to_string()
 
-######### Printing Results #########
 
+######### Printing the results #########
 load_time_range = data['LoadTime'].max() - data['LoadTime'].min()
 print "-----------------------------------------------------------------"
 print "Linear Regression Load Time Prediction: ", predicted.mean()
 print "Linear Regression Root Mean Square Error: ", rms
 print "Linear Regression Normalized Root Mean Square Error: ", float(rms) / load_time_range
 print "Linear Regression R2 Score: ", linear_reg_r2_scores.mean()
+# print "Linear Regression Score: ", regr.score(X_test, y_test)
 
+# print "***************************************************"
+# print "XGBoost Root Mean Square Error: ", xgboost_cv_rmse.mean()
+# print "***************************************************"
+# print "KernelRidge Root Mean Square Error: ", cv_kernelRidge.min()
+# print "KernelRidge Normalized Root Mean Square Error: ", cv_kernelRidge.min() / load_time_range
+# print "KernelRidge R2 Score: ", max(cv_kernelRidge_r2_score)
 print "***************************************************"
-print "XGBoost Root Mean Square Error: ", xgboost_cv_rmse.mean()
+print "Random Forest Regressor Cross Validation R-2 Score: ", rf_cv_r2_score.mean()
 print "***************************************************"
 print "Ridge Root Mean Square Error: ", cv_ridge.min()
 print "Ridge Normalized Root Mean Square Error: ", cv_ridge.min() / load_time_range
@@ -360,7 +462,6 @@ print "Lasso R2 Score: ", lasso_r2_scores.mean()
 print "***************************************************"
 print "ElasticNet Root Mean Square Error: ", cv_elasticNet.min()
 print "ElasticNet R2 Score: ", max(cv_elasticNet_r2_score)
-
 
 
 
