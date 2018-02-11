@@ -57,43 +57,38 @@ selected_columns_VPs = ['PageURL', 'PageSize', 'LoadTime', 'VP', 'ReqObjs', 'Ret
 
 
 ######## Reading CSV Files ########
-eugene_timing_data = pd.read_csv("../../Analysis/Data-Eugene/Last-analysis/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
-china_timing_data = pd.read_csv("../../Analysis/Data-China/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
-brazil_timing_data = pd.read_csv("../../Analysis/Data-Brazil/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
-ny_timing_data = pd.read_csv("../../Analysis/Data-NY/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
-spain_timing_data = pd.read_csv("../../Analysis/Data-Spain/timing_data/new_filtered_time_results_all_maxs.csv", sep=' ', names=timing_column_names)
+eugene_timing_data = pd.read_csv("eugene_time_results.csv", sep=' ', names=timing_column_names)
+china_timing_data = pd.read_csv("china_time_results.csv", sep=' ', names=timing_column_names)
+brazil_timing_data = pd.read_csv("brazil_time_results.csv", sep=' ', names=timing_column_names)
+ny_timing_data = pd.read_csv("ny_time_results.csv", sep=' ', names=timing_column_names)
+spain_timing_data = pd.read_csv("spain_time_results.csv", sep=' ', names=timing_column_names)
 
-eugene_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_eugene_stat.csv", sep=' ', names=stat_column_names)
-brazil_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_brazil_stat.csv", sep=' ', names=stat_column_names)
-china_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_china_stat.csv", sep=' ', names=stat_column_names)
-spain_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_spain_stat.csv", sep=' ', names=stat_column_names)
-ny_stat_data = pd.read_csv("../../Analysis/latest_stats/new_filtered_ny_stat.csv", sep=' ', names=stat_column_names)
+eugene_stat_data = pd.read_csv("eugene_stat_data.csv", sep=' ', names=stat_column_names)
+brazil_stat_data = pd.read_csv("brazil_stat_data.csv", sep=' ', names=stat_column_names)
+china_stat_data = pd.read_csv("china_stat_data.csv", sep=' ', names=stat_column_names)
+spain_stat_data = pd.read_csv("spain_stat_data.csv", sep=' ', names=stat_column_names)
+ny_stat_data = pd.read_csv("ny_stat_data.csv", sep=' ', names=stat_column_names)
 
-######## Removing Outliers ########
-eugene_timing_data['AllMax1'] = eugene_timing_data.LoadTime / (eugene_timing_data.MaxDelay/1000)
-china_timing_data['AllMax1'] = china_timing_data.LoadTime / (china_timing_data.MaxDelay/1000)
-brazil_timing_data['AllMax1'] = brazil_timing_data.LoadTime / (brazil_timing_data.MaxDelay/1000)
-ny_timing_data['AllMax1'] = ny_timing_data.LoadTime / (ny_timing_data.MaxDelay/1000)
-spain_timing_data['AllMax1'] = spain_timing_data.LoadTime / (spain_timing_data.MaxDelay/1000)
-
+######## Selecting the desired columns from stat data ########
 eugene_stat_data = eugene_stat_data.loc[:, selected_columns_VPs]
 china_stat_data = china_stat_data.loc[:, selected_columns_VPs]
 brazil_stat_data = brazil_stat_data.loc[:, selected_columns_VPs]
 ny_stat_data = ny_stat_data.loc[:, selected_columns_VPs]
 spain_stat_data = spain_stat_data.loc[:, selected_columns_VPs]
 
-noOutlier_eugene_timing_data = eugene_timing_data.loc[((eugene_timing_data.LoadTime > 10) & (eugene_timing_data.AllMax1 > 2)) | (eugene_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
-noOutlier_china_timing_data = china_timing_data.loc[((china_timing_data.LoadTime > 10) & (china_timing_data.AllMax1 > 2)) | (china_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
-noOutlier_brazil_timing_data = brazil_timing_data.loc[((brazil_timing_data.LoadTime > 10) & (brazil_timing_data.AllMax1 > 2)) | (brazil_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
-noOutlier_ny_timing_data = ny_timing_data.loc[((ny_timing_data.LoadTime > 10) & (ny_timing_data.AllMax1 > 2)) | (ny_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
-noOutlier_spain_timing_data = spain_timing_data.loc[((spain_timing_data.LoadTime > 10) & (spain_timing_data.AllMax1 > 2)) | (spain_timing_data.LoadTime < 10), ['PageURL', 'MaxDelay']]
+######## Selecting the desired columns from timing data ########
+eugene_timing_data = eugene_timing_data.loc[:, ['PageURL', 'MaxDelay']]
+china_timing_data = china_timing_data.loc[:, ['PageURL', 'MaxDelay']]
+brazil_timing_data = brazil_timing_data.loc[:, ['PageURL', 'MaxDelay']]
+ny_timing_data = ny_timing_data.loc[:, ['PageURL', 'MaxDelay']]
+spain_timing_data = spain_timing_data.loc[:, ['PageURL', 'MaxDelay']]
 
 ######## Merging timing values with stat values to add MaxDelay ########
-merged_eugene = eugene_stat_data.merge(noOutlier_eugene_timing_data, on=['PageURL'])
-merged_china = china_stat_data.merge(noOutlier_china_timing_data, on=['PageURL'])
-merged_brazil = brazil_stat_data.merge(noOutlier_brazil_timing_data, on=['PageURL'])
-merged_ny = ny_stat_data.merge(noOutlier_ny_timing_data, on=['PageURL'])
-merged_spain = spain_stat_data.merge(noOutlier_spain_timing_data, on=['PageURL'])
+merged_eugene = eugene_stat_data.merge(eugene_timing_data, on=['PageURL'])
+merged_china = china_stat_data.merge(china_timing_data, on=['PageURL'])
+merged_brazil = brazil_stat_data.merge(brazil_timing_data, on=['PageURL'])
+merged_ny = ny_stat_data.merge(ny_timing_data, on=['PageURL'])
+merged_spain = spain_stat_data.merge(spain_timing_data, on=['PageURL'])
 
 ######## Removing Duplicates ########
 merged_eugene = merged_eugene.drop_duplicates(subset=['PageURL', 'LoadTime'])
@@ -118,6 +113,8 @@ all_stat_data['Servers'] = all_stat_data.NonOrigSer + all_stat_data.NumOriginSer
 all_stat_data['RetObjs'] = all_stat_data.NumObjsOrigin + all_stat_data.NumObjsNonOrigin + all_stat_data.NumObjsUnknown
 all_stat_data['AllMax1'] = all_stat_data.LoadTime / (all_stat_data.MaxDelay / 1000)
 
+######## Removing Outliers ########
+all_stat_data = all_stat_data.loc[((all_stat_data.AllMax1 > 2) | (all_stat_data.LoadTime < 10))]
 
 ######## Selecting columns needed for the regression ########
 selected_columns_data = ['LoadTime', 'PageSize', 'VP', 'ReqObjs', 'RetObjs', 'Servers', 'NonOrigSer', 'JSNum',
