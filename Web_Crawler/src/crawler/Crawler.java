@@ -16,7 +16,7 @@ import org.openqa.selenium.firefox.FirefoxProfile;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
 public class Crawler  {
-    private final static String HARDIR = System.getProperty("user.dir") + "/../results";
+    private final static String HARDIR = "/har_results";
 
     public static void main(String[] args) throws IOException {
         WebDriver driver = null;
@@ -24,26 +24,14 @@ public class Crawler  {
         boolean hasException = false;
         boolean isAdded = false;
         ArrayList<String> webpages = new ArrayList<String>();
-        // Scanner s = new Scanner(new File(System.getProperty("user.dir") + "/../results/target_pages.txt"));
-        // while (s.hasNextLine()){
-        //     webpages.add(s.nextLine());
-        // }
-        // s.close();
-
-        webpages.add("facebook.com");
-        webpages.add("myspace.com");
-        webpages.add("twitter.com");
-        webpages.add("instagram.com");
-        webpages.add("linkedin.com");
-        webpages.add("snapchat.com");
-        webpages.add("amazon.com");
-        webpages.add("pinterest.com");
-        webpages.add("reddit.com");
-        webpages.add("ask.fm");
-
+        Scanner s = new Scanner(new File("target_pages.txt"));
+        while (s.hasNextLine()){
+            webpages.add(s.nextLine());
+        }
+        s.close();
 
         try {
-            // Init
+            // Initialization
             String OSName = System.getProperty("os.name").toLowerCase();
             String OSType = System.getProperty("os.arch");
             if(OSName.indexOf("mac") >= 0)
@@ -54,15 +42,13 @@ public class Crawler  {
               else
                 System.setProperty("webdriver.gecko.driver", System.getProperty("user.dir") + "/../selenium/geckodriver-linux32");
 
-            // Load test pages
-            for(int i=0;i<webpages.size();i++){
+            // Navigate the target websites
+            for(int i = 0; i < webpages.size(); i++){
             	hasException = false;
-
             	DesiredCapabilities capabilities = DesiredCapabilities.firefox();
-
             	FirefoxProfile profile = new FirefoxProfile();
 
-                // Load The Har Export Trigger Extension
+                // Load and add the Har Export Trigger extension
                 File harExport = new File("har_export_trigger-0.5.0-beta.7-fx.xpi");
                 profile.addExtension(harExport);
 
@@ -97,7 +83,6 @@ public class Crawler  {
 
             	String webpage = webpages.get(i);
 
-            	//String webpage_url = "http://www." + webpage;
             	String webpage_url = "http://" + webpage;
 
             	// Default name of the target HAR file. The default file name supports formatters
@@ -106,9 +91,8 @@ public class Crawler  {
                 capabilities.setCapability(FirefoxDriver.PROFILE, profile);
 
             	driver = new FirefoxDriver(capabilities);
-            	//driver.manage().timeouts().implicitlyWait(60, TimeUnit.SECONDS);
 
-            	// Printing number of files before adding a HAR file
+            	// Print the number of files before adding a HAR file
             	numFiles = harDir.listFiles().length;
             	System.out.println(harDir.getPath() + ": " + numFiles);
 
@@ -117,31 +101,33 @@ public class Crawler  {
             	Thread.sleep(2000L);
 
             	try {
+                    //driver.manage().timeouts().implicitlyWait(210, TimeUnit.SECONDS);
             		driver.manage().timeouts().pageLoadTimeout(210, TimeUnit.SECONDS);
             		System.out.println("Before Get...");
                 	driver.get(webpage_url);
                 	System.out.println("After Get...");
             	}
-            	catch(TimeoutException e){
-            		FileWriter fw = new FileWriter(System.getProperty("user.dir") + "/../results/NotLoaded.txt", true);
+            	catch(TimeoutException timeException){
+            		FileWriter fw = new FileWriter("NotLoaded.txt", true);
             		fw.write(webpage_url + "\n");
             		fw.close();
             		hasException = true;
+                    System.err.println(timeException.toString());
             		driver.quit();
             	}
-            	catch (Exception ee){
-            		FileWriter fw = new FileWriter(System.getProperty("user.dir") + "/../results/NotFound.txt", true);
+            	catch (Exception notFoundException){
+            		FileWriter fw = new FileWriter("NotFound.txt", true);
             		fw.write(webpage_url + "\n");
             		fw.close();
             		hasException = true;
-            		System.out.println("Not Found Exception");
+            		System.err.println("Not Found Exception");
             		driver.quit();
             	}
 
                 // Wait for the new HAR file
             	isAdded = false;
-                for (int c=0; c < 90; c++) {
-                	System.out.println("Preparing HAR file..." + c);
+                for (int c = 0; c < 90; c++) {
+                	System.out.println("Preparing the HAR file..." + c);
                 	if (harDir.listFiles().length > numFiles) {
                 		isAdded = true;
                 		System.out.println("added");
@@ -150,10 +136,12 @@ public class Crawler  {
                 	Thread.sleep(1000L);
                 }
                 if(!isAdded && !hasException) {
-                	FileWriter fw = new FileWriter(System.getProperty("user.dir") + "/../results/NotLoaded.txt", true);
+                	FileWriter fw = new FileWriter("NotLoaded.txt", true);
             		fw.write(webpage_url + "\n");
             		fw.close();
                 }
+                
+                // Print tje number of files after adding a HAR file
                 System.out.println(harDir.getPath() + ": " + harDir.listFiles().length);
                 if (driver != null) {
                     driver.quit();
@@ -161,7 +149,7 @@ public class Crawler  {
             }
         }
         catch (Exception exc) {
-            System.err.println(exc);
+            System.err.println(exc.toString());
         }
     }
 }
