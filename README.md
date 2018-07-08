@@ -1,5 +1,4 @@
-# Web-Complexity
-A Longitudinal Assessment of Website Complexity
+# A Longitudinal Assessment of Website Complexity
 
 Web Crawler:
 - Automatically collects HAR (HTTP Archive) files from our set of target websites using Selenium WebDriver in Java and HAR Export Trigger Firefox add-on.
