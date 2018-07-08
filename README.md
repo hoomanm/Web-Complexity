@@ -1,8 +1,8 @@
 # Web-Complexity
-Understanding the Complexity of Popular Websites
+A Longitudinal Assessment of Website Complexity
 
 Web Crawler:
- - An automated HAR (HTTP Archive) file exporter for collecting the log of web browser’s interaction with a set of target websites which uses Selenium WebDriver in Java.
+- Automatically collects HAR (HTTP Archive) files from our set of target websites using Selenium WebDriver in Java and HAR Export Trigger Firefox add-on.
  
  Har File Parser:
   - A parser for extracting the desired infromation from the collected HAR files using the haralyzer module in Python.
