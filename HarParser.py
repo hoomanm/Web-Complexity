@@ -101,12 +101,13 @@ def Parser(har_location, destination_file):
                 json_data = json.loads(f.read())
                 har_parser = HarParser(json_data)
 
-                ### Checking the entries and objects for each page
+                ### Checking the entries on each page of the website
                 for page in har_parser.pages:
                     har_page = HarPage(page.page_id, har_data=json_data)
 
-                    # Identifying page main URL to use with dig command
+                    # Identifying the main URL of the page to use with dig command
                     reponse_status = har_page.entries[0]['response']['status']
+                    ### 200 http status code means success return from server
                     if reponse_status == 200:
                         page_main_url = har_page.entries[0]['request']['url'].split("/")[2]
                         main_dns_servers = get_dns(page_main_url)
@@ -145,7 +146,7 @@ def Parser(har_location, destination_file):
                         if filtered:
                             break
 
-                        #### Identifying the gap and filtering the HAR file ####
+                        #### Identifying the gap and filtering the HAR file 
                         split_last_datetime = entry['startedDateTime'].split("T")
                         date = split_last_datetime[0].split("-")
                         time = split_last_datetime[1].split(":")
@@ -187,7 +188,6 @@ def Parser(har_location, destination_file):
                                 cut_off_index = index
 
                         server_type = ''
-                        # 200 http status code means success return from server
                         if entry['response']['status'] == 200:
 
                             entry_url = entry['request']['url'].split("/")[2]
@@ -242,7 +242,7 @@ def Parser(har_location, destination_file):
                                 video_matches = re.search(r"video/(.*)", mime_type)
 
 
-                                ### Number and Size of Javascript Objects ###
+                                ### Number and Size of Javascript Objects
                                 if javascript_matches:
                                     size_javascript += entry_size
                                     num_javascript_matches += 1
@@ -253,7 +253,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_javascript += entry_size
                                         num_non_origin_javascript_matches += 1
 
-                                ### Number and Size of CSS Objects ###
+                                ### Number and Size of CSS Objects
                                 elif css_matches:
                                     size_css += entry_size
                                     num_css_matches += 1
@@ -264,7 +264,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_css += entry_size
                                         num_non_origin_css_matches += 1
 
-                                ### Number and Size of HTML Objects ###
+                                ### Number and Size of HTML Objects
                                 elif html_matches:
                                     size_html += entry_size
                                     num_html_matches += 1
@@ -275,7 +275,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_html += entry_size
                                         num_non_origin_html_matches += 1
 
-                                ### Number and Size of Image Objects ###
+                                ### Number and Size of Image Objects
                                 elif image_matches:
                                     size_image += entry_size
                                     num_image_matches += 1
@@ -286,7 +286,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_image += entry_size
                                         num_non_origin_image_matches += 1
 
-                                ### Number and Size of Plain Text Objects ###
+                                ### Number and Size of Plain Text Objects
                                 elif plain_text_matches:
                                     size_plain_text += entry_size
                                     num_plain_text_matches += 1
@@ -297,7 +297,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_plain_text += entry_size
                                         num_non_origin_plain_text_matches += 1
 
-                                ### Number and Size of Json Objects ###
+                                ### Number and Size of Json Objects
                                 elif json_matches:
                                     size_json += entry_size
                                     num_json_matches += 1
@@ -308,7 +308,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_json += entry_size
                                         num_non_origin_json_matches += 1
 
-                                ### Number and Size of Json Objects ###
+                                ### Number and Size of Flash Objects
                                 elif flash_matches:
                                     size_flash += entry_size
                                     num_flash_matches += 1
@@ -319,7 +319,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_flash += entry_size
                                         num_non_origin_flash_matches += 1
 
-                                ### Number and Size of Json Objects ###
+                                ### Number and Size of XML Objects
                                 elif xml_matches:
                                     size_xml += entry_size
                                     num_xml_matches += 1
@@ -330,7 +330,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_xml += entry_size
                                         num_non_origin_xml_matches += 1
 
-                                ### Number and Size of Json Objects ###
+                                ### Number and Size of Font Objects
                                 elif font_matches:
                                     size_font += entry_size
                                     num_font_matches += 1
@@ -341,7 +341,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_font += entry_size
                                         num_non_origin_font_matches += 1
 
-                                ### Number and Size of Json Objects ###
+                                ### Number and Size of Audio Objects
                                 elif audio_matches:
                                     size_audio += entry_size
                                     num_audio_matches += 1
@@ -352,7 +352,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_audio += entry_size
                                         num_non_origin_audio_matches += 1
 
-                                ### Number and Size of Json Objects ###
+                                ### Number and Size of Video Objects
                                 elif video_matches:
                                     size_video += entry_size
                                     num_video_matches += 1
@@ -363,6 +363,7 @@ def Parser(har_location, destination_file):
                                         size_non_origin_video += entry_size
                                         num_non_origin_video_matches += 1
 
+                                ### Number and Size of other types of Objects
                                 else:
                                     size_other += entry_size
                                     num_other += 1
@@ -388,7 +389,7 @@ def Parser(har_location, destination_file):
                                           + size_flash + size_font + size_video + size_audio
 
 
-            ### Writing the collected data in a file
+            ### Writing the extracted information in a csv file
             f = open(destination_file, 'a')
             writer = csv.writer(f, delimiter=' ', quoting=csv.QUOTE_MINIMAL)
             writer.writerow([page_main_url,
